@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -46,6 +47,16 @@ func CheckForUpdate() {
 	if updateAvailable() {
 		latestVersion := viper.GetString(ConfigUpdateCheckLatestVersion)
 		fmt.Fprintln(os.Stderr, aurora.Yellow(fmt.Sprintf("Update available %s -> %s", Version, latestVersion)))
+		fmt.Fprintln(os.Stderr, "To update, run:")
+		switch runtime.GOOS {
+		case "windows":
+			fmt.Fprintln(os.Stderr, "iwr https://fly.io/install.ps1 | iex")
+		case "linux":
+		case "darwin":
+			fmt.Fprintln(os.Stderr, "curl -fsSL https://fly.io/install.sh | sh")
+		default:
+			fmt.Fprintln(os.Stderr, "Unknown platform. Contact support for more information")
+		}
 	}
 
 	lastCheck := viper.GetTime(ConfigUpdateCheckTimestamp)
