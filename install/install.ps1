@@ -49,8 +49,6 @@ $FlyctlUri = if (!$Version) {
   "https://github.com/denoland/deno/releases/download/${Version}/deno_${Version}_${Target}.tar.gz"
 }
 
-echo $FlyctlUri
-
 if (!(Test-Path $BinDir)) {
   New-Item $BinDir -ItemType Directory | Out-Null
 }
