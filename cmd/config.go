@@ -4,14 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
+	"strings"
 
 	"github.com/superfly/flyctl/cmdctx"
-
-	"github.com/superfly/flyctl/docstrings"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
 	"github.com/superfly/flyctl/api"
+	"github.com/superfly/flyctl/docstrings"
 	"github.com/superfly/flyctl/flyctl"
 	"github.com/superfly/flyctl/helpers"
 )
@@ -46,11 +47,68 @@ func runDisplayConfig(ctx *cmdctx.CmdContext) error {
 		return err
 	}
 
-	//encoder := json.NewEncoder(os.Stdout)
-	//encoder.SetIndent("", "  ")
-	//encoder.Encode(cfg.Definition)
-	ctx.WriteJSON(cfg.Definition)
+	if ctx.OutputJSON() {
+		ctx.WriteJSON(cfg.Definition)
+		return nil
+	}
+
+	printValue(0, "Services", cfg.Definition)
+
 	return nil
+}
+
+func keyFormat(key string) string {
+	newkey := strings.ReplaceAll(key, "_", " ")
+	return strings.Title(newkey)
+}
+
+func printValue(depth int, key string, value interface{}) {
+	//fmt.Printf("%T %d\n", value, depth)
+	indent := strings.Repeat(" ", depth*2)
+	switch v := value.(type) {
+	case string:
+		fmt.Printf("%s %s: %s\n", indent, keyFormat(key), v)
+	case int:
+		fmt.Printf("%s %s: %d\n", indent, keyFormat(key), v)
+	case float64:
+		fmt.Printf("%s %s: %d\n", indent, keyFormat(key), int(v))
+	case map[string]interface{}:
+		if key != "" {
+			fmt.Printf("\n%s %s\n", indent, keyFormat(key))
+		}
+		var keys []string
+		for k := range v {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			printValue(depth+1, k, v[k])
+		}
+		fmt.Println()
+	case []interface{}:
+		if key == "handlers" {
+			s := make([]string, len(v))
+			for z, v := range v {
+				s[z] = fmt.Sprint(v)
+			}
+			fmt.Printf("%s %s: [ %s ]\n", indent, keyFormat(key), strings.Join(s, ","))
+		} else {
+			if key != "" {
+				fmt.Printf("\n%s %s\n", indent, keyFormat(key))
+			}
+			for _, v2 := range v {
+				printValue(depth+1, "", v2)
+			}
+		}
+	case api.Definition:
+		fmt.Println(keyFormat(key))
+		for _, s := range v {
+			printValue(0, "", s)
+		}
+	default:
+		fmt.Println("Nope")
+		fmt.Printf("%+v %T\n", v, v)
+	}
 }
 
 func runSaveConfig(ctx *cmdctx.CmdContext) error {
