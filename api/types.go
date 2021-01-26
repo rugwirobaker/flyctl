@@ -227,6 +227,10 @@ type App struct {
 	HealthChecks    *struct {
 		Nodes []CheckState
 	}
+	PostgresAppRole *struct {
+		Databases *[]PostgresClusterDatabase
+		Users     *[]PostgresClusterUser
+	}
 }
 
 type TaskGroupCount struct {
@@ -859,4 +863,15 @@ type AttachPostgresClusterInput struct {
 	PostgresClusterAppID string  `json:"postgresClusterAppId"`
 	DatabaseName         *string `json:"databaseName,omitempty"`
 	VariableName         *string `json:"variableName,omitempty"`
+}
+
+type PostgresClusterUser struct {
+	Username    string
+	IsSuperuser bool
+	Databases   []string
+}
+
+type PostgresClusterDatabase struct {
+	Name  string
+	Users []string
 }

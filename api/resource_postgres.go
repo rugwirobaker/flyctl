@@ -107,3 +107,60 @@ func (client *Client) DetachPostgresCluster(postgresAppName string, appName stri
 	_, err := client.Run(req)
 	return err
 }
+
+func (client *Client) ListPostgresDatabases(appName string) ([]PostgresClusterDatabase, error) {
+	query := `
+		query($appName: String!) {
+			app(name: $appName) {
+				postgresAppRole: role {
+					name
+					... on PostgresClusterAppRole {
+						databases {
+							name
+							users
+						}
+					}
+				}
+			}
+		}
+		`
+
+	req := client.NewRequest(query)
+	req.Var("appName", appName)
+
+	data, err := client.Run(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return *data.App.PostgresAppRole.Databases, nil
+}
+
+func (client *Client) ListPostgresUsers(appName string) ([]PostgresClusterUser, error) {
+	query := `
+		query($appName: String!) {
+			app(name: $appName) {
+				postgresAppRole: role {
+					name
+					... on PostgresClusterAppRole {
+						users {
+							username
+							isSuperuser
+							databases
+						}
+					}
+				}
+			}
+		}
+		`
+
+	req := client.NewRequest(query)
+	req.Var("appName", appName)
+
+	data, err := client.Run(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return *data.App.PostgresAppRole.Users, nil
+}

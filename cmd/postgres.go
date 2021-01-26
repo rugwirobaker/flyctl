@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -12,6 +14,7 @@ import (
 	"github.com/superfly/flyctl/cmd/presenters"
 	"github.com/superfly/flyctl/cmdctx"
 	"github.com/superfly/flyctl/docstrings"
+	"github.com/superfly/flyctl/helpers"
 )
 
 func newPostgresCommand() *Command {
@@ -38,6 +41,13 @@ func newPostgresCommand() *Command {
 	detachStrngs := docstrings.Get("postgres.detach")
 	detachCmd := BuildCommandKS(cmd, runDetachPostgresCluster, detachStrngs, os.Stdout, requireSession, requireAppName)
 	detachCmd.AddStringFlag(StringFlagOpts{Name: "postgres-app", Description: "the postgres cluster to detach from the app"})
+
+	dbStrings := docstrings.Get("postgres.db")
+	dbCmd := BuildCommandKS(cmd, nil, dbStrings, os.Stdout, requireSession)
+
+	listDBStrings := docstrings.Get("postgres.db.list")
+	listDBCmd := BuildCommandKS(dbCmd, runListPostgresDatabases, listDBStrings, os.Stdout, requireSession, requireAppNameAsArg)
+	listDBCmd.Args = cobra.ExactArgs(1)
 
 	return cmd
 }
@@ -158,6 +168,50 @@ func runDetachPostgresCluster(ctx *cmdctx.CmdContext) error {
 
 	s.FinalMSG = fmt.Sprintf("Postgres cluster %s is now detached from %s\n", postgresAppName, appName)
 	s.Stop()
+
+	return nil
+}
+
+func runListPostgresDatabases(ctx *cmdctx.CmdContext) error {
+	databases, err := ctx.Client.API().ListPostgresDatabases(ctx.AppName)
+	if err != nil {
+		return err
+	}
+
+	if ctx.OutputJSON() {
+		ctx.WriteJSON(databases)
+		return nil
+	}
+
+	table := helpers.MakeSimpleTable(ctx.Out, []string{"Name", "Users"})
+
+	for _, database := range databases {
+		table.Append([]string{database.Name, strings.Join(database.Users, ",")})
+	}
+
+	table.Render()
+
+	return nil
+}
+
+func runListPostgresUsers(ctx *cmdctx.CmdContext) error {
+	users, err := ctx.Client.API().ListPostgresUsers(ctx.AppName)
+	if err != nil {
+		return err
+	}
+
+	if ctx.OutputJSON() {
+		ctx.WriteJSON(users)
+		return nil
+	}
+
+	table := helpers.MakeSimpleTable(ctx.Out, []string{"Username", "Superuser", "Databases"})
+
+	for _, user := range users {
+		table.Append([]string{user.Username, strconv.FormatBool(user.IsSuperuser), strings.Join(user.Databases, ",")})
+	}
+
+	table.Render()
 
 	return nil
 }
